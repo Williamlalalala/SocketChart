@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+   <head>
+       <meta charset="utf-8">
+       <script src="https://cdn.jsdelivr.net/npm/vue@2.5.21/dist/vue.js"></script>
+       <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+       <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+   </head>
+   <body style="height: 100%; margin: 0">
+        <div id="container" style="height: 100%"></div>
+        <button type="primary" onclick="open()">开启</button>
+        <button type="success" onclick="close()">关闭</button>
+       <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/echarts.min.js"></script>
+       <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts-gl/echarts-gl.min.js"></script>
+       <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts-stat/ecStat.min.js"></script>
+       <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/dataTool.min.js"></script>
+       <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/china.js"></script>
+       <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/world.js"></script>
+       <script type="text/javascript" src="https://api.map.baidu.com/api?v=2.0&ak=ZUONbpqGBsYGXNIYHicvbAbM"></script>
+       <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/bmap.min.js"></script>
+       <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/simplex.js"></script>
+       <script async 
+        src="http://code.jquery.com/jquery-3.3.1.js"
+        integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+        crossorigin="anonymous"></script>
+       <script type="text/javascript">
+            var dom = document.getElementById("container");
+            var myChart = echarts.init(dom);
+            var app = {};
+            option = null;
+            option = {
+                title: {
+                    text: '动态数据',
+                    subtext: ''
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross',
+                        label: {
+                            backgroundColor: '#283b56'
+                        }
+                    }
+                },
+                legend: {
+                    data:['电流', '电压']
+                },
+                toolbox: {
+                    show: true,
+                    feature: {
+                        dataView: {readOnly: false},
+                        restore: {},
+                        saveAsImage: {}
+                    }
+                },
+                dataZoom: {
+                    show: false,
+                    start: 0,
+                    end: 100
+                },
+                xAxis: [
+                    {
+                        type: 'category',
+                        boundaryGap: true,
+                        data: (function (){
+                            var now = new Date();
+                            var res = [];
+                            var len = 10;
+                            while (len--) {
+                                res.unshift(now.toLocaleTimeString().replace(/^\D*/,''));
+                                now = new Date(now - 2000);
+                            }
+                            return res;
+                        })()
+                    },
+                    {
+                        type: 'category',
+                        boundaryGap: true,
+                        data: (function (){
+                            var res = [];
+                            var len = 10;
+                            while (len--) {
+                                res.push(10 - len - 1);
+                            }
+                            return res;
+                        })()
+                    }
+                ],
+                yAxis: [
+                    {
+                        type: 'value',
+                        scale: true,
+                        name: '电流',
+                        max: 5,
+                        min: 4,
+                        boundaryGap: [0.2, 0.2]
+                    },
+                    {
+                        type: 'value',
+                        scale: true,
+                        name: '电压',
+                        max: 10,
+                        min: 0,
+                        boundaryGap: [0.2, 0.2]
+                    }
+                ],
+                series: [
+                    {
+                        name:'电流',
+                        type:'bar',
+                        xAxisIndex: 1,
+                        yAxisIndex: 1,
+                        data:(function (){
+                            var res = [];
+                            var len = 10;
+                            while (len--) {
+                                res.push((Math.random()/2 + 4.75));
+                            }
+                        })()
+                    },
+                    {
+                        name:'电压',
+                        type:'line',
+                        data:(function (){
+                            var res = [];
+                            var len = 0;
+                            while (len < 10) {
+                                res.push((Math.random() + 5).toFixed(1) - 0);
+                                len++;
+                            }
+                            return res;
+                        })()
+                    }
+                ]
+            };
+
+            app.count = 11;
+            var i = 0;
+            var interval = setInterval(function (){
+                i++;
+                const ip = "192.168.1.107:8080"
+                axisData = (new Date()).toLocaleTimeString().replace(/^\D*/,'');
+
+                var data0 = option.series[0].data;
+                var data1 = option.series[1].data;
+                data0.shift();
+                $.ajax({
+                    url: ip+"/data?1&1",
+                    type: "GET",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (res) {
+                        if (res.success) {
+                            console.log(res);
+                            data0.push(res.data.voltage);
+                        }
+                    },
+                    error: function () {},
+                })
+                //data1.shift();
+                //data1.push((Math.random() + 4).toFixed(1) - 0);
+
+                option.xAxis[0].data.shift();
+                option.xAxis[0].data.push(axisData);
+                option.xAxis[1].data.shift();
+                option.xAxis[1].data.push(app.count++);
+
+                myChart.setOption(option);
+                if(i%5 == 0){
+                    $.ajax({
+                        url: ip+"/condition",
+                        type: "GET",
+                        contentType: "application/json; charset=utf-8",
+                        dataType: "json",
+                        success: function (res) {
+                            if (res.success) {
+                                console.log(res);
+                                type =  res.data;
+                                if(!type){
+                                    clearInterval(interval);
+                                }
+                            }
+                        },
+                        error: function () {},
+                    })
+                }
+            }, 1000);
+            ;
+            if (option && typeof option === "object") {
+                myChart.setOption(option, true);
+            }
+            var open = function () {
+                $.ajax({
+                    url: ip+"/switch/on",
+                    type: "POST",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (res) {
+                        if (res.success) {
+                            console.log(res);
+                        }
+                    },
+                    error: function () {},
+                })
+            }
+            var close = function () {
+                $.ajax({
+                    url: ip+"/switch/off",
+                    type: "POST",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (res) {
+                        if (res.success) {
+                            console.log(res);
+                        }
+                    },
+                    error: function () {},
+                })
+            }
+       </script>
+       
+       
+   </body>
+</html>
